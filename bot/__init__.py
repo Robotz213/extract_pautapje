@@ -52,6 +52,11 @@ class ExtractPauta:
                 self.driver.get(f"https://pje.trt11.jus.br/consultaprocessual/pautas{judge}-{date}")
                 self.get_pautas()
                 current_date += timedelta(days=1)
+            filename = f"{vara}.json"
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.appends, f, ensure_ascii=False, indent=4)
+                
+            
         
         filename = "varas.json"
         with open(filename, 'w', encoding='utf-8') as f:
@@ -63,7 +68,7 @@ class ExtractPauta:
         table_pautas: WebElement = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
         itens_pautas = None
         
-        with suppress(NoSuchElementException):
+        with suppress(NoSuchElementException, TimeoutException):
             itens_pautas = table_pautas.find_element(By.TAG_NAME, 'tbody').find_elements(By.TAG_NAME, 'tr')
         
         if itens_pautas:
