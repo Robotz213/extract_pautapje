@@ -42,17 +42,26 @@ class ExtractPauta:
         pos = 5
         count = 0
         for vara in tqdm(list(self.varas), position=-1, colour=gerar_cor_hex()):
-            if len(threads) >= 1:
+            
+            count = 0
+            while len(threads) >= 4:
+                
+                count +=1
+                free_thread = None
                 for thread in threads:
                     thread: threading.Thread = thread
-                    if thread.is_alive():
-                        sleep(25)
-                        count +=1 
+                    if not thread.is_alive():
+                        free_thread = thread
+                        break
+                    
+                if free_thread:
+                    break
+                 
+                if count == 4:       
+                    filename = "varas.json"
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        json.dump(self.appends, f, ensure_ascii=False, indent=4)
                         
-                    if count == 4:
-                        sleep(240) 
-                        threads.clear()
-            
             options = Options()
             options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
             path = os.path.join(os.getcwd(), "geckodriver.exe")
@@ -62,7 +71,7 @@ class ExtractPauta:
             threads.append(starter)
             starter.start()
             pos += 2
-            
+            sleep(30)
         
         filename = "varas.json"
         with open(filename, 'w', encoding='utf-8') as f:
@@ -70,18 +79,16 @@ class ExtractPauta:
     
     def queue(self, vara: str, driver: Type[WebDriver], wait: Type[WebDriverWait], pos: int):
         
-        
-        
         if not self.appends.get(vara, None):
             self.appends[vara] = {}
             
         judge = str(self.varas.get(vara))
-
+        filename = f"{vara}.json"
         start_date = datetime.strptime('2024-07-12', '%Y-%m-%d')
         end_date = datetime.strptime('2024-12-31', '%Y-%m-%d')
         total_days = end_date - start_date
         bar = tqdm(range(1, total_days.days), position=pos, colour=gerar_cor_hex())
-        # Use um loop para adicionar cada data ao intervalo
+        
         current_date = start_date
         while current_date <= end_date:
             
@@ -93,10 +100,13 @@ class ExtractPauta:
             
             if len(self.appends[vara][date]) == 0:
                 self.appends[vara].pop(date)
-                
+            
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
             bar.update()
                 
-        filename = f"{vara}.json"
+        
         
         if not len(self.appends[vara]) == 0:
         
@@ -110,7 +120,9 @@ class ExtractPauta:
         try:
             
             times = 4
-            table_pautas: WebElement = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
+            
+            table_pautas: WebElement = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'pje-data-table[id="tabelaResultado"]')))
+            table_pautas: WebElement = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
             itens_pautas = None
             
             with suppress(NoSuchElementException, TimeoutException):
@@ -141,7 +153,7 @@ class ExtractPauta:
                     if not buttondisabled:
                         
                         btn_next.click()
-                        self.get_pautas()
+                        self.get_pautas(driver, wait)
 
                 except Exception as e:
                     tqdm.write(f"{e}")
