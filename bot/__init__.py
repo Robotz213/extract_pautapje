@@ -1,8 +1,12 @@
+import pandas as pd
 from time import sleep
 from typing import Type
+from datetime import datetime, timedelta
 from contextlib import suppress
+import json
+from tqdm import tqdm
 
-
+from bot.varas_dict import varas
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -12,70 +16,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-varas = {
-    "1ª Vara do Trabalho de Boa Vista": "#VTBV1-1",
-    "2ª Vara do Trabalho de Boa Vista": "#VTBV2-1",
-    "3ª Vara do Trabalho de Boa Vista": "#VTBV3-1",
-    "51ª Vara Digital do Núcleo de Justiça 4.0 - RR": "#51VDRR-1",
-    "52ª Vara Digital do Núcleo de Justiça 4.0 - RR": "#52VDRR-1",
-    "53ª Vara Digital do Núcleo de Justiça 4.0 - RR": "#53VDRR-1",
-    "CEJUSC - BOA VISTA": "#CBV-1",
-    "1ª Vara do Trabalho de Coari": "#1VTC-1",
-    "1ª Vara do Trabalho de Eirunepé": "#VTE-1",
-    "1ª Vara do Trabalho de Humaitá": "#1VTH-1",
-    "1ª Vara do Trabalho de Itacoatiara": "#VTI-1",
-    "1ª Vara do Trabalho de Lábrea": "#1VTL-1",
-    "1ª Vara do Trabalho de Manacapuru": "#1VTM-1",
-    "1ª Vara do Trabalho de Manaus": "#VT1",
-    "2ª Vara do Trabalho de Manaus": "#VT2",
-    "3ª Vara do Trabalho de Manaus": "#VT3",
-    "4ª Vara do Trabalho de Manaus": "#VT4",
-    "5ª Vara do Trabalho de Manaus": "#VT5",
-    "6ª Vara do Trabalho de Manaus": "#VT6",
-    "7ª Vara do Trabalho de Manaus": "#VT7",
-    "8ª Vara do Trabalho de Manaus": "#VT8",
-    "9ª Vara do Trabalho de Manaus": "#VT9",
-    "10ª Vara do Trabalho de Manaus": "#VTL-10",
-    "11ª Vara do Trabalho de Manaus": "#VTL-11",
-    "12ª Vara do Trabalho de Manaus": "#VTL-12",
-    "13ª Vara do Trabalho de Manaus": "#VTL-13",
-    "14ª Vara do Trabalho de Manaus": "#VTL-14",
-    "15ª Vara do Trabalho de Manaus": "#VTL-15",
-    "16ª Vara do Trabalho de Manaus": "#VTL-16",
-    "17ª Vara do Trabalho de Manaus": "#VTL-17",
-    "18ª Vara do Trabalho de Manaus": "#VTL-18",
-    "19ª Vara do Trabalho de Manaus": "#VTL-19",
-    "1ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "2ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "3ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "4ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "5ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "6ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "7ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "8ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "9ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "10ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "11ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "12ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "13ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "14ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "15ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "16ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "17ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "18ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "19ª Vara Digital do Núcleo de Justiça 4.0 - AM": "",
-    "Secretaria de Execução da Fazenda Pública": "",
-    "SEÇÃO DE HASTAS PÚBLICAS- SEHASP": "",
-    "CEJUSC-JT 1º grau": "",
-    "Divisão de Execução Concentrada": "",
-    "Divisão de Pesquisa Patrimonial": "",
-    "Projeto Garimpo - 1º Grau": "",
-    "Corregedoria-Geral;": "",
-    "1ª Vara do Trabalho de Parintins": "",
-    "1ª Vara do Trabalho de Presidente Figueiredo": "",
-    "1ª Vara do Trabalho de Tabatinga": "",
-    "1ª Vara do Trabalho de Tefé": ""
-}
 
 
 class ExtractPauta:
@@ -83,22 +23,76 @@ class ExtractPauta:
     def __init__(self) -> None:
         pass
 
+        self.varas = varas()
+        
         path = GeckoDriverManager().install()
         self.driver = webdriver.Firefox(service=Service(path))
         self.wait = WebDriverWait(self.driver, 10)
-        
+        self.driver.maximize_window()
         
     def execution(self):
         
-        self.driver.get("https://pje.trt11.jus.br/consultaprocessual/pautas")
+        self.appends = {}
+        for vara in tqdm(list(self.varas)):
+            
+            if not self.appends.get(vara, None):
+                self.appends[vara] = {}
+            
+            judge = str(self.varas.get(vara))
+
+            start_date = datetime.strptime('2024-07-12', '%Y-%m-%d')
+            end_date = datetime.strptime('2024-07-30', '%Y-%m-%d')
+
+            # Use um loop para adicionar cada data ao intervalo
+            current_date = start_date
+            while current_date <= end_date:
+                
+                date = current_date.strftime('%Y-%m-%d')
+                self.data_append = self.appends[vara][date] = []
+                self.driver.get(f"https://pje.trt11.jus.br/consultaprocessual/pautas{judge}-{date}")
+                self.get_pautas()
+                current_date += timedelta(days=1)
         
-        get_orgaojudge = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class="cdk-overlay-container"]')))
-        get_orgaojudge.click()
+        filename = "varas.json"
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(self.appends, f, ensure_ascii=False, indent=4)
+                
+    def get_pautas(self):
         
-        sleep(1)
+        sleep(3)
+        table_pautas: WebElement = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
+        itens_pautas = None
         
+        with suppress(NoSuchElementException):
+            itens_pautas = table_pautas.find_element(By.TAG_NAME, 'tbody').find_elements(By.TAG_NAME, 'tr')
         
+        if itens_pautas:
+            for item in itens_pautas:
+                
+                item: WebElement = item
+                itens_tr = item.find_elements(By.TAG_NAME, 'td')
+                
+                appends = {"indice": itens_tr[0].text,
+                        "Horário": itens_tr[1].text,
+                        "Tipo": itens_tr[2].text,
+                        "Processo": itens_tr[3].find_element(By.TAG_NAME, 'a').text,
+                        "Partes": itens_tr[3].find_element(By.TAG_NAME, 'span').find_element(By.TAG_NAME, 'span').text,
+                        "Sala": itens_tr[5].text,
+                        "Situação": itens_tr[6].text}
+                
+                self.data_append.append(appends)
+                
+                pass
+            
+            btn_next = self.driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Próxima página"]')
+            
+            buttondisabled = btn_next.get_attribute("disabled")
+            if not buttondisabled:
+                
+                btn_next.click()
+                self.get_pautas()
         
-        pass
+    
+                
 
 
