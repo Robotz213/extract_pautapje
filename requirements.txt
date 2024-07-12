@@ -3,3 +3,5 @@ webdriver-manager
 pandas
 openpyxl
 tqdm
+clear
+termcolor
