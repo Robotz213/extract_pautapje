@@ -5,6 +5,7 @@ from typing import Type
 from datetime import datetime, timedelta
 from contextlib import suppress
 import json
+import random
 from tqdm import tqdm
 from clear import clear
 from bot.varas_dict import varas
@@ -17,10 +18,12 @@ from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from selenium import *
 import threading
 
+def gerar_cor_hex():
+    return "#{:06x}".format(random.randint(0, 0xFFFFFF))
 
 class ExtractPauta:
     
@@ -37,11 +40,18 @@ class ExtractPauta:
         threads = []
         
         pos = 5
-        
-        for vara in tqdm(list(self.varas), position=-1):
-            if len(threads) == 4:
-                sleep(60)
-                threads.clear()
+        count = 0
+        for vara in tqdm(list(self.varas), position=-1, colour=gerar_cor_hex()):
+            if len(threads) >= 1:
+                for thread in threads:
+                    thread: threading.Thread = thread
+                    if thread.is_alive():
+                        sleep(25)
+                        count +=1 
+                        
+                    if count == 4:
+                        sleep(240) 
+                        threads.clear()
             
             options = Options()
             options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
@@ -49,10 +59,9 @@ class ExtractPauta:
             driver = webdriver.Firefox(service=Service(path), options=options)
             wait = WebDriverWait(driver, 10)
             starter = threading.Thread(target=self.queue, args=(vara, driver, wait, pos, ))
-            threads.append(starter.name)
+            threads.append(starter)
             starter.start()
-            pos += 1
-            sleep(30)
+            pos += 2
             
         
         filename = "varas.json"
@@ -61,8 +70,7 @@ class ExtractPauta:
     
     def queue(self, vara: str, driver: Type[WebDriver], wait: Type[WebDriverWait], pos: int):
         
-        self.wait = wait
-        self.driver = driver
+        
         
         if not self.appends.get(vara, None):
             self.appends[vara] = {}
@@ -72,7 +80,7 @@ class ExtractPauta:
         start_date = datetime.strptime('2024-07-12', '%Y-%m-%d')
         end_date = datetime.strptime('2024-12-31', '%Y-%m-%d')
         total_days = end_date - start_date
-        bar = tqdm(range(1, total_days.days), position=pos)
+        bar = tqdm(range(1, total_days.days), position=pos, colour=gerar_cor_hex())
         # Use um loop para adicionar cada data ao intervalo
         current_date = start_date
         while current_date <= end_date:
@@ -80,7 +88,7 @@ class ExtractPauta:
             date = current_date.strftime('%Y-%m-%d')
             self.data_append = self.appends[vara][date] = []
             driver.get(f"https://pje.trt11.jus.br/consultaprocessual/pautas{judge}-{date}")
-            self.get_pautas()
+            self.get_pautas(driver, wait)
             current_date += timedelta(days=1)
             
             if len(self.appends[vara][date]) == 0:
@@ -97,45 +105,51 @@ class ExtractPauta:
             
         driver.quit()
              
-    def get_pautas(self):
+    def get_pautas(self, driver: Type[WebDriver], wait: Type[WebDriverWait]):
         
-        sleep(3)
         try:
-            table_pautas: WebElement = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
+            
+            times = 4
+            table_pautas: WebElement = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]')))
             itens_pautas = None
             
             with suppress(NoSuchElementException, TimeoutException):
                 itens_pautas = table_pautas.find_element(By.TAG_NAME, 'tbody').find_elements(By.TAG_NAME, 'tr')
             
             if itens_pautas:
+                times = 6
                 for item in itens_pautas:
                     
+                    with suppress(StaleElementReferenceException):
+                        item: WebElement = item
+                        itens_tr = item.find_elements(By.TAG_NAME, 'td')
+                        
+                        appends = {"indice": itens_tr[0].text,
+                                "Horário": itens_tr[1].text,
+                                "Tipo": itens_tr[2].text,
+                                "Processo": itens_tr[3].find_element(By.TAG_NAME, 'a').text,
+                                "Partes": itens_tr[3].find_element(By.TAG_NAME, 'span').find_element(By.TAG_NAME, 'span').text,
+                                "Sala": itens_tr[5].text,
+                                "Situação": itens_tr[6].text}
+                        
+                        self.data_append.append(appends)
+
+                try:
+                    btn_next = driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Próxima página"]')
                     
-                    item: WebElement = item
-                    itens_tr = item.find_elements(By.TAG_NAME, 'td')
-                    
-                    appends = {"indice": itens_tr[0].text,
-                            "Horário": itens_tr[1].text,
-                            "Tipo": itens_tr[2].text,
-                            "Processo": itens_tr[3].find_element(By.TAG_NAME, 'a').text,
-                            "Partes": itens_tr[3].find_element(By.TAG_NAME, 'span').find_element(By.TAG_NAME, 'span').text,
-                            "Sala": itens_tr[5].text,
-                            "Situação": itens_tr[6].text}
-                    
-                    self.data_append.append(appends)
-                    
-                    pass
+                    buttondisabled = btn_next.get_attribute("disabled")
+                    if not buttondisabled:
+                        
+                        btn_next.click()
+                        self.get_pautas()
+
+                except Exception as e:
+                    tqdm.write(f"{e}")
             
-                btn_next = self.driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Próxima página"]')
-                
-                buttondisabled = btn_next.get_attribute("disabled")
-                if not buttondisabled:
-                    
-                    btn_next.click()
-                    self.get_pautas()
-                    
+            sleep(times)
+                 
         except Exception as e:
-            print(e)
+            tqdm.write(f"{e}")
             pass
         
     
