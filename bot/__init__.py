@@ -41,10 +41,14 @@ class ExtractPauta:
         
         pos = 5
         count = 0
-        for vara in tqdm(list(self.varas), position=-1, colour=gerar_cor_hex()):
+        time = 30
+        for vara in tqdm(list(self.varas), position=-2, colour=gerar_cor_hex()):
+
+            if len(threads) > 0:
+                sleep(time)
+                time += 15
             
-            count = 0
-            while len(threads) >= 4:
+            while len(threads) == 4:
                 
                 count +=1
                 free_thread = None
@@ -54,25 +58,27 @@ class ExtractPauta:
                         free_thread = thread
                         break
                     
-                if free_thread:
+                if free_thread and len(threads) == 4:
                     threads.remove(free_thread)
-                    break
-                 
-                if count == 4:       
+                    sleep(30)   
                     filename = "varas.json"
                     with open(filename, 'w', encoding='utf-8') as f:
                         json.dump(self.appends, f, ensure_ascii=False, indent=4)
+                        
+                    time = 30
+                        
+                    break
                         
             options = Options()
             options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
             path = os.path.join(os.getcwd(), "geckodriver.exe")
             driver = webdriver.Firefox(service=Service(path), options=options)
+            driver.maximize_window()
             wait = WebDriverWait(driver, 10)
             starter = threading.Thread(target=self.queue, args=(vara, driver, wait, pos, ))
             threads.append(starter)
             starter.start()
             pos += 2
-            sleep(30)
         
         filename = "varas.json"
         with open(filename, 'w', encoding='utf-8') as f:
@@ -91,7 +97,7 @@ class ExtractPauta:
         bar = tqdm(range(1, total_days.days), position=pos, colour=gerar_cor_hex())
         
         current_date = start_date
-        while current_date <= end_date:
+        while True:
             
             date = current_date.strftime('%Y-%m-%d')
             self.data_append = self.appends[vara][date] = []
@@ -105,6 +111,10 @@ class ExtractPauta:
             
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
+            
+            if current_date == end_date:
+                break    
+            
             bar.update()
                 
         
