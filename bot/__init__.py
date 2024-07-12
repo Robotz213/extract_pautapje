@@ -55,6 +55,7 @@ class ExtractPauta:
                         break
                     
                 if free_thread:
+                    threads.remove(free_thread)
                     break
                  
                 if count == 4:       
