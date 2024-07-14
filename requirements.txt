@@ -5,3 +5,4 @@ openpyxl
 tqdm
 clear
 termcolor
+BeautifulSoup4
