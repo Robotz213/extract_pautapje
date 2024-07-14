@@ -71,9 +71,12 @@ class ExtractPauta:
                         
             options = Options()
             options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
+            options.add_argument("--headless")
+            
             path = os.path.join(os.getcwd(), "geckodriver.exe")
             driver = webdriver.Firefox(service=Service(path), options=options)
             driver.maximize_window()
+            
             wait = WebDriverWait(driver, 10)
             starter = threading.Thread(target=self.queue, args=(vara, driver, wait, pos, ))
             threads.append(starter)
@@ -113,6 +116,7 @@ class ExtractPauta:
                 json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
             
             if current_date == end_date:
+                clear()
                 break    
             
             bar.update()
@@ -174,8 +178,3 @@ class ExtractPauta:
         except Exception as e:
             tqdm.write(f"{e}")
             pass
-        
-    
-                
-
-
