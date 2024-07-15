@@ -35,8 +35,9 @@ class ExtractPauta:
 
     def __init__(self) -> None:
         
+        
         os.makedirs("json", exist_ok=True)
-        self.varas = varas()
+        self.lista_varas = list(varas())
         self.appends = {}
         self.threads = []
         self.count = 0
@@ -46,67 +47,79 @@ class ExtractPauta:
         self.options.binary_location = self.firefox_bin
         self.options.add_argument("--headless")
         self.path = os.path.join(os.getcwd(), "geckodriver.exe")
-
+        self.pos = 0
+        self.max_rows = len(self.lista_varas)+1
         self.sys = {"Linux": "bin",
                     "Windows": "Scripts"}
-
+        
+        self.varas = varas()
+        self.bar = tqdm(self.lista_varas, colour=gerar_cor_hex())
+        
     def execution(self):
 
         ## Intera sobre as varas do dicionario, assim permite buscar por data
         ## em todos os juizados sem depender que ele espere finalizar uma vara
         ## para inicializar outra
         
-        for vara in tqdm(list(self.varas), position=-2, colour=gerar_cor_hex()):
+        
 
-            if len(self.threads) > 0:
-                sleep(self.time)
-                self.time += 15
+        if self.pos == self.max_rows:
+            ## Esse arquivo .json salva todas as buscas em um único arquivo
+            filename = os.path.join(os.getcwd(), "json", "pautas.json")
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.appends, f, ensure_ascii=False, indent=4)
 
-            # Delimita a quantidade de threads para evitar sobrecarga de memória
-            while len(self.threads) == 4:
+            argumentos = [filename]
+            sistema = platform.system()
 
-                count += 1
-                free_thread = None
-                for thread in self.threads:
-                    thread: threading.Thread = thread
-                    
-                    
-                    if not thread.is_alive():
-                        free_thread = thread
-                        break
+            python_path = f".venv/{self.sys.get(sistema)}/python"
+            subprocess.run([python_path, "makexlsx.py"] + argumentos)
+            return
+        
+        if len(self.threads) > 0:
+            sleep(self.time)
+            self.time += 15
 
-                if free_thread and len(self.threads) == 4:
-                    
-                    # Se a thread estiver finalizada, ele remove da lista
-                    self.threads.remove(free_thread)
-                    self.time = 30
+        # Delimita a quantidade de threads para evitar sobrecarga de memória
+        while len(self.threads) == 4:
+
+            count += 1
+            free_thread = None
+            for thread in self.threads:
+                thread: threading.Thread = thread
+                
+                
+                if not thread.is_alive():
+                    free_thread = thread
                     break
-            
-            # Inicializador do WebDriver
-            driver = webdriver.Firefox(
-                service=Service(self.path), options=self.options)
-            
-            # Maximiza a window para evitar erros de interação com elementos
-            driver.maximize_window()
 
-            wait = WebDriverWait(driver, 10)
-            
-            # Inicia a execução em uma Thread
-            starter = threading.Thread(
-                target=self.queue, args=(vara, driver, wait,))
-            self.threads.append(starter)
-            starter.start()
+            if free_thread and len(self.threads) == 4:
+                
+                # Se a thread estiver finalizada, ele remove da lista
+                self.threads.remove(free_thread)
+                self.time = 30
+                break
+        
+        vara = self.lista_varas[self.pos]
+        
+        # Inicializador do WebDriver
+        driver = webdriver.Firefox(
+            service=Service(self.path), options=self.options)
+        
+        # Maximiza a window para evitar erros de interação com elementos
+        driver.maximize_window()
 
-        ## Esse arquivo .json salva todas as buscas em um único arquivo
-        filename = os.path.join(os.getcwd(), "json", "pautas.json")
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.appends, f, ensure_ascii=False, indent=4)
-
-        argumentos = [filename]
-        sistema = platform.system()
-
-        python_path = f".venv/{self.sys.get(sistema)}/python"
-        subprocess.run([python_path, "makexlsx.py"] + argumentos)
+        wait = WebDriverWait(driver, 10)
+        
+        # Inicia a execução em uma Thread
+        starter = threading.Thread(
+            target=self.queue, args=(vara, driver, wait,))
+        self.threads.append(starter)
+        starter.start()
+        
+        self.bar.update()
+        self.pos += 1 
+        self.execution()
 
     def queue(self, vara: str, driver: Type[WebDriver], wait: Type[WebDriverWait]):
 
