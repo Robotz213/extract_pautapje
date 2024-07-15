@@ -51,6 +51,10 @@ class ExtractPauta:
 
     def execution(self):
 
+        ## Intera sobre as varas do dicionario, assim permite buscar por data
+        ## em todos os juizados sem depender que ele espere finalizar uma vara
+        ## para inicializar outra
+        
         for vara in tqdm(list(self.varas), position=-2, colour=gerar_cor_hex()):
 
             if len(self.threads) > 0:
@@ -118,6 +122,13 @@ class ExtractPauta:
 
             date = current_date.strftime('%Y-%m-%d')
             self.data_append = self.appends[vara][date] = []
+            
+            ## O filtro funciona conforme a URL. Veja o "varas_dict.py"
+            ## Defini conforme o TRT 11, atualize esse arquivo conforme seu estado
+            ## No TRT11, é "url/pautas{juizado}-{data_filtro}"
+            
+            ## Exemplo: https://pje.trt11.jus.br/consultaprocessual/pautas#VTBV3-1-2024-07-24
+            
             driver.get(
                 f"https://pje.trt11.jus.br/consultaprocessual/pautas{judge}-{date}")
             self.get_pautas(driver, wait)
@@ -126,6 +137,9 @@ class ExtractPauta:
             if len(self.appends[vara][date]) == 0:
                 self.appends[vara].pop(date)
 
+            # Eu optei por salvar em ".json", mas caso queria outro formato, aconselho criar um arquivo apêndice
+            # Parecido com o que eu fiz em "makexlsx.py", onde ele chama o Pandas e converte o json gerado em xlsx
+            
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
 
