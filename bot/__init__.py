@@ -35,6 +35,7 @@ class ExtractPauta:
 
     def __init__(self) -> None:
         
+        os.makedirs("json", exist_ok=True)
         self.varas = varas()
         self.appends = {}
         self.threads = []
@@ -97,8 +98,6 @@ class ExtractPauta:
             starter.start()
 
         ## Esse arquivo .json salva todas as buscas em um único arquivo
-        
-        os.makedirs("json", exist_ok=True)
         filename = os.path.join(os.getcwd(), "json", "pautas.json")
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(self.appends, f, ensure_ascii=False, indent=4)
@@ -163,6 +162,7 @@ class ExtractPauta:
             
             ## Interage com a tabela de pautas
             times = 4
+            itens_pautas = None
             table_pautas: WebElement = wait.until(EC.all_of(EC.presence_of_element_located((By.CSS_SELECTOR, 'pje-data-table[id="tabelaResultado"]'))),
                                       (EC.visibility_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]'))))[-1]
 
