@@ -34,7 +34,7 @@ from bot.misc.hex_color import gerar_cor_hex
 class ExtractPauta:
 
     def __init__(self) -> None:
-
+        
         self.varas = varas()
         self.appends = {}
         self.threads = []
@@ -96,6 +96,8 @@ class ExtractPauta:
             self.threads.append(starter)
             starter.start()
 
+        ## Esse arquivo .json salva todas as buscas em um único arquivo
+        
         os.makedirs("json", exist_ok=True)
         filename = os.path.join(os.getcwd(), "json", "pautas.json")
         with open(filename, 'w', encoding='utf-8') as f:
@@ -145,9 +147,11 @@ class ExtractPauta:
 
             if current_date == end_date:
                 break
-
+        
         if not len(self.appends[vara]) == 0:
 
+            ## Salva a extração por vara caso queira algo mais específico
+            
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
 
@@ -156,15 +160,18 @@ class ExtractPauta:
     def get_pautas(self, driver: Type[WebDriver], wait: Type[WebDriverWait]):
 
         try:
-
+            
+            ## Interage com a tabela de pautas
             times = 4
             table_pautas: WebElement = wait.until(EC.all_of(EC.presence_of_element_located((By.CSS_SELECTOR, 'pje-data-table[id="tabelaResultado"]'))),
                                       (EC.visibility_of_element_located((By.CSS_SELECTOR, 'table[name="Tabela de itens de pauta"]'))))[-1]
 
+            
             with suppress(NoSuchElementException, TimeoutException):
                 itens_pautas = table_pautas.find_element(
                     By.TAG_NAME, 'tbody').find_elements(By.TAG_NAME, 'tr')
 
+            ## Caso encontre a tabela, raspa os dados
             if itens_pautas:
                 times = 6
                 for item in itens_pautas:
@@ -196,8 +203,10 @@ class ExtractPauta:
                 except Exception as e:
                     tqdm.write(f"{e}")
 
+            ## Eu defini um timer, um caso encontre a tabela e outro
+            ## para caso não encontre ela
+            
             sleep(times)
 
         except Exception as e:
             tqdm.write(f"{e}")
-            pass
