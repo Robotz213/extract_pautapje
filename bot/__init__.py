@@ -60,8 +60,6 @@ class ExtractPauta:
         ## Intera sobre as varas do dicionario, assim permite buscar por data
         ## em todos os juizados sem depender que ele espere finalizar uma vara
         ## para inicializar outra
-        
-        
 
         if self.pos == self.max_rows:
             ## Esse arquivo .json salva todas as buscas em um único arquivo
