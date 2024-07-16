@@ -33,28 +33,27 @@ from bot.misc.hex_color import gerar_cor_hex
 
 class ExtractPauta:
 
-    def __init__(self, vara: str, date_inicio: Type[datetime], date_fim: Type[datetime]) -> None:
+    def __init__(self) -> None:
         
         
         os.makedirs("json", exist_ok=True)
-        
-        self.vara = vara
-        
-        self.date_inicio = date_inicio
-        self.date_fim = date_fim
-        
+        self.lista_varas = list(varas())
         self.appends = {}
         self.threads = []
+        self.count = 0
+        self.time = 30
         self.firefox_bin = r"C:\Program Files\Mozilla Firefox\firefox.exe"
         self.options = Options()
         self.options.binary_location = self.firefox_bin
         self.options.add_argument("--headless")
         self.path = os.path.join(os.getcwd(), "geckodriver.exe")
         self.pos = 0
+        self.max_rows = len(self.lista_varas)+1
         self.sys = {"Linux": "bin",
                     "Windows": "Scripts"}
         
         self.varas = varas()
+        self.bar = tqdm(self.lista_varas, colour=gerar_cor_hex())
         
     def execution(self):
 
@@ -62,9 +61,27 @@ class ExtractPauta:
         ## em todos os juizados sem depender que ele espere finalizar uma vara
         ## para inicializar outra
 
-        # Delimita a quantidade de threads para evitar sobrecarga de memória
-        while len(self.threads) > 0:
+        if self.pos == self.max_rows:
+            ## Esse arquivo .json salva todas as buscas em um único arquivo
+            filename = os.path.join(os.getcwd(), "json", "pautas.json")
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.appends, f, ensure_ascii=False, indent=4)
 
+            argumentos = [filename]
+            sistema = platform.system()
+
+            python_path = f".venv/{self.sys.get(sistema)}/python"
+            subprocess.run([python_path, "makexlsx.py"] + argumentos)
+            return
+        
+        if len(self.threads) > 0:
+            sleep(self.time)
+            self.time += 15
+
+        # Delimita a quantidade de threads para evitar sobrecarga de memória
+        while len(self.threads) == 4:
+
+            count += 1
             free_thread = None
             for thread in self.threads:
                 thread: threading.Thread = thread
@@ -74,19 +91,14 @@ class ExtractPauta:
                     free_thread = thread
                     break
 
-            if free_thread:
+            if free_thread and len(self.threads) == 4:
                 
-                ## Esse arquivo .json salva todas as buscas em um único arquivo
-                filename = os.path.join(os.getcwd(), "json", "pautas.json")
-                with open(filename, 'w', encoding='utf-8') as f:
-                    json.dump(self.appends, f, ensure_ascii=False, indent=4)
-
-                argumentos = [filename]
-                sistema = platform.system()
-
-                python_path = f".venv/{self.sys.get(sistema)}/python"
-                subprocess.run([python_path, "makexlsx.py"] + argumentos)
-                return
+                # Se a thread estiver finalizada, ele remove da lista
+                self.threads.remove(free_thread)
+                self.time = 30
+                break
+        
+        vara = self.lista_varas[self.pos]
         
         # Inicializador do WebDriver
         driver = webdriver.Firefox(
@@ -99,9 +111,12 @@ class ExtractPauta:
         
         # Inicia a execução em uma Thread
         starter = threading.Thread(
-            target=self.queue, args=(self.vara, driver, wait,))
+            target=self.queue, args=(vara, driver, wait,))
         self.threads.append(starter)
         starter.start()
+        
+        self.bar.update()
+        self.pos += 1 
         self.execution()
 
     def queue(self, vara: str, driver: Type[WebDriver], wait: Type[WebDriverWait]):
@@ -111,8 +126,10 @@ class ExtractPauta:
 
         judge = str(self.varas.get(vara))
         filename = os.path.join(os.getcwd(), "json", f"{vara}.json")
+        start_date = datetime.strptime('2024-07-12', '%Y-%m-%d')
+        end_date = datetime.strptime('2024-12-31', '%Y-%m-%d')
 
-        current_date = self.date_inicio
+        current_date = start_date
         while True:
 
             date = current_date.strftime('%Y-%m-%d')
@@ -138,7 +155,7 @@ class ExtractPauta:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.appends[vara], f, ensure_ascii=False, indent=4)
 
-            if current_date == self.date_fim:
+            if current_date == end_date:
                 break
         
         if not len(self.appends[vara]) == 0:
@@ -168,7 +185,7 @@ class ExtractPauta:
             ## Caso encontre a tabela, raspa os dados
             if itens_pautas:
                 times = 6
-                for item in tqdm(itens_pautas):
+                for item in itens_pautas:
 
                     with suppress(StaleElementReferenceException):
                         item: WebElement = item

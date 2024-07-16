@@ -6,3 +6,5 @@ tqdm
 clear
 termcolor
 BeautifulSoup4
+inquirer
+termcolor
