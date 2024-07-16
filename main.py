@@ -22,8 +22,8 @@ def set_prompt():
     
     clear()
     
-    answer_data_inicio = input(colored("Informe a data inicial (separado por '/'): ", attrs=["bold", "blink", "underline"], color="blue"))
-    answer_data_fim = input(colored("Informe a data final (separado por '/'): ", attrs=["bold", "blink", "underline"], color="blue"))
+    answer_data_inicio = input(colored("Informe a data inicial (separado por '/'): ", attrs=["bold", "underline"], color="blue"))
+    answer_data_fim = input(colored("Informe a data final (separado por '/'): ", attrs=["bold", "underline"], color="blue"))
     
     answer_data_inicio = datetime.strptime(answer_data_inicio.replace(" ", "").replace("/", "-"), '%d-%m-%Y')
     answer_data_fim = datetime.strptime(answer_data_fim.replace(" ", "").replace("/", "-"), '%d-%m-%Y')

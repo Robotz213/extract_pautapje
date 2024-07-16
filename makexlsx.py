@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import sys
+from termcolor import colored
 
 def makefile(file: list):
     # Load the JSON file
@@ -25,7 +26,7 @@ def makefile(file: list):
     # Salvar o DataFrame em uma planilha Excel
     df.to_excel('schedule.xlsx', index=False)
 
-    print("Dados salvos em schedule.xlsx")
+    print(colored("Dados salvos em schedule.xlsx", "green", attrs=["bold"]))
 
 argumentos = sys.argv
 makefile(argumentos)
