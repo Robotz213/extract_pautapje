@@ -3,8 +3,13 @@ import json
 import sys
 from termcolor import colored
 import os
+import pathlib
+from datetime import datetime
+
 
 def makefile(file: list):
+    
+    path_save = os.path.join(pathlib.Path.home(), "Desktop",  f'{datetime.now().strftime("%d-%m-%Y %H-%M-%S")}.xlsx')
     # Load the JSON file
     file_path = file[1]
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -25,7 +30,7 @@ def makefile(file: list):
     df = json_to_dataframe(data)
 
     # Salvar o DataFrame em uma planilha Excel
-    df.to_excel('schedule.xlsx', index=False)
+    df.to_excel(path_save, index=False)
 
     print(colored("Dados salvos em schedule.xlsx", "green", attrs=["bold"]))
     os.system("pause")
