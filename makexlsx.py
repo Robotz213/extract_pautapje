@@ -32,7 +32,7 @@ def makefile(file: list):
     # Salvar o DataFrame em uma planilha Excel
     df.to_excel(path_save, index=False)
 
-    print(colored("Dados salvos em schedule.xlsx", "green", attrs=["bold"]))
+    print(colored(f"Dados salvos em {path_save}", "green", attrs=["bold"]))
     os.system("pause")
 
 argumentos = sys.argv
