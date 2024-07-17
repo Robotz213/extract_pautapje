@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import sys
 from termcolor import colored
+import os
 
 def makefile(file: list):
     # Load the JSON file
@@ -27,6 +28,7 @@ def makefile(file: list):
     df.to_excel('schedule.xlsx', index=False)
 
     print(colored("Dados salvos em schedule.xlsx", "green", attrs=["bold"]))
+    os.system("pause")
 
 argumentos = sys.argv
 makefile(argumentos)
