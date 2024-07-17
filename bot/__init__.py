@@ -155,7 +155,7 @@ class ExtractPauta:
             
             tqdm.write(colored(f"Buscando pautas na data {self.current_date.strftime("%d/%m/%Y")}", "yellow", attrs=["bold"]))
             ## Interage com a tabela de pautas
-            sleep(1)
+            driver.implicitly_wait(2)
             times = 4
             itens_pautas = None
             table_pautas: WebElement = wait.until(EC.all_of(EC.presence_of_element_located((By.CSS_SELECTOR, 'pje-data-table[id="tabelaResultado"]'))),
