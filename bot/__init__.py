@@ -112,7 +112,7 @@ class ExtractPauta:
         judge = str(self.varas.get(vara))
         filename = os.path.join(os.getcwd(), "json", f"{vara}.json")
 
-        self.current_date = current_date = self.date_inicio
+        current_date = self.date_inicio
         while self.date_fim >= current_date:
 
             date = current_date.strftime('%Y-%m-%d')
@@ -126,7 +126,7 @@ class ExtractPauta:
             
             driver.get(
                 f"https://pje.trt11.jus.br/consultaprocessual/pautas{judge}-{date}")
-            self.get_pautas(driver, wait)
+            self.get_pautas(driver, wait, current_date)
             current_date += timedelta(days=1)
 
             if len(self.appends[vara][date]) == 0:
@@ -147,13 +147,13 @@ class ExtractPauta:
 
         driver.quit()
 
-    def get_pautas(self, driver: Type[WebDriver], wait: Type[WebDriverWait]):
+    def get_pautas(self, driver: Type[WebDriver], wait: Type[WebDriverWait], current_date: Type[datetime]):
 
         try:
             
             clear()
             
-            tqdm.write(colored(f"Buscando pautas na data {self.current_date.strftime("%d/%m/%Y")}", "yellow", attrs=["bold"]))
+            tqdm.write(colored(f"Buscando pautas na data {current_date.strftime("%d/%m/%Y")}", "yellow", attrs=["bold"]))
             ## Interage com a tabela de pautas
             driver.implicitly_wait(2)
             times = 4
