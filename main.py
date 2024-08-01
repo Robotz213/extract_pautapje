@@ -10,6 +10,7 @@ clear()
 def set_prompt():
     
     choices = list(varas())
+    choices.append("Todas")
     question_juiz = [
     inquirer.List(
             'vara',
@@ -28,9 +29,16 @@ def set_prompt():
     answer_data_inicio = datetime.strptime(answer_data_inicio.replace(" ", "").replace("/", "-"), '%d-%m-%Y')
     answer_data_fim = datetime.strptime(answer_data_fim.replace(" ", "").replace("/", "-"), '%d-%m-%Y')
     
+    escolha = str(answer_vara.get("vara"))
     
     start = ExtractPauta(answer_vara.get("vara"), answer_data_inicio, answer_data_fim)
-    start.execution()
+    
+    if escolha == "Todas":
+    
+        start.execution2()
+    
+    else:
+        start.execution()
     
     
 set_prompt()
