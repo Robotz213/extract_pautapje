@@ -43,9 +43,9 @@ class ExtractPauta:
         
         self.date_inicio = date_inicio
         self.date_fim = date_fim
-        
+        self.count = 0
         self.max_rows = len(list(varas()))
-        
+        self.time = 0
         self.appends = {}
         self.threads = []
         self.firefox_bin = r"C:\Program Files\Mozilla Firefox\firefox.exe"
@@ -85,7 +85,7 @@ class ExtractPauta:
         # Delimita a quantidade de threads para evitar sobrecarga de memória
         while len(self.threads) == 4:
 
-            count += 1
+            self.count += 1
             free_thread = None
             for thread in self.threads:
                 thread: threading.Thread = thread
@@ -120,7 +120,7 @@ class ExtractPauta:
         starter.start()
         
         self.pos += 1 
-        self.execution()
+        self.execution2()
         
     def execution(self):
 
