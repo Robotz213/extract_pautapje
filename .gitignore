@@ -4,3 +4,6 @@ __pycache__
 *.xlsx
 *.cmd
 *.exe
+chrome_bot/
+Temp/
+.wdm

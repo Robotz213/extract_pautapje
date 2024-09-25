@@ -70,11 +70,11 @@ def set_prompt():
     elif questions_loadpw:
 
         loadpw = inquirer.prompt(questions_loadpw)
-        if loadpw is True:
+        if loadpw.get("loadpw") is True:
             usuario = credential.get("usuario")
             senha = credential.get("senha")
             
-        elif loadpw is False:
+        elif loadpw.get("loadpw") is False:
             creds = inquirer.prompt(questions_pw)
             usuario = creds.get("usuario")
             senha = creds.get("senha")

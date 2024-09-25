@@ -3,7 +3,9 @@ import pandas as pd
 
 import os
 import json
-
+import shutil
+import random
+import pathlib
 import platform
 import threading
 import subprocess
@@ -15,18 +17,18 @@ from datetime import datetime
 from datetime import timedelta
 from contextlib import suppress
 
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.driver_cache import DriverCacheManager
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
-from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
 from termcolor import colored
 from bot.varas_dict import varas
@@ -36,13 +38,13 @@ from bot.misc.hex_color import gerar_cor_hex
 class ExtractPauta:
 
     def __init__(self, vara: str, date_inicio: Type[datetime], date_fim: Type[datetime],
-                 usuario:str, senha: str) -> None:
+                 usuario:str = None, senha: str = None) -> None:
         
         clear()
         os.makedirs("json", exist_ok=True)
         os.makedirs("firefox", exist_ok=True)
         self.vara = vara
-        
+        self.driver = None
         self.date_inicio = date_inicio
         self.date_fim = date_fim
         self.count = 0
@@ -52,45 +54,34 @@ class ExtractPauta:
         self.threads = []
         self.firefox_bin = r"C:\Program Files\Mozilla Firefox\firefox.exe"
         self.options = Options()
-        self.options.binary_location = self.firefox_bin
-        self.options.profile = FirefoxProfile(os.path.join(os.getcwd(), "firefox"))
-        self.path = os.path.join(os.getcwd(), "geckodriver.exe")
         self.pos = 0
         self.sys = {"Linux": "bin",
                     "Windows": "Scripts"}
         
+        list_args = ['--ignore-ssl-errors=yes', '--ignore-certificate-errors', 
+                         "--display=:10", "--window-size=1600,900", "--no-sandbox", "--disable-blink-features=AutomationControlled", 
+                         '--kiosk-printing']
+        
+        self.user_data_dir = os.path.join(os.getcwd(), "chrome_bot")
+        os.makedirs(self.user_data_dir, exist_ok=True)
+        for arguments in list_args:
+            self.options.add_argument(arguments)
+        
+        
+        path_chrome = os.path.join(os.getcwd())
+        driver_cache_manager = DriverCacheManager(root_dir=path_chrome)
+        driverinst = ChromeDriverManager(cache_manager=driver_cache_manager).install()
+        self.path = os.path.join(pathlib.Path(driverinst).parent.resolve(), "chromedriver.exe")
+        
+        if platform.system() == "Linux":
+            self.path.replace(".exe", "")
         
         self.varas = varas()
         self.lista_varas = list(varas())
         
-        self.auth(usuario, senha)
+        self.usuario = usuario
+        self.senha = senha
         
-    def auth(self, usuario: str, senha: str):
-        
-        
-        driver = webdriver.Firefox(
-            service=Service(self.path), options=self.options)
-        
-        wait = WebDriverWait(driver, 20)
-        driver.get("https://pje.trt11.jus.br/primeirograu/login.seam")
-        
-        login = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="username"]')))
-        password = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="password"]')))
-        entrar = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="btnEntrar"]')))
-        
-        login.send_keys(usuario)
-        sleep(0.5)
-        password.send_keys(senha)
-        sleep(0.5)
-        entrar.click()
-        
-        logado = None
-        with suppress(TimeoutException):
-            logado = wait.until(EC.url_to_be("https://pje.trt11.jus.br/pjekz/painel/usuario-externo"))
-            
-        if not logado:
-            raise
-    
     def execution2(self):
 
         ## Intera sobre as varas do dicionario, assim permite buscar por data
@@ -137,10 +128,8 @@ class ExtractPauta:
         vara = self.lista_varas[self.pos]
         
         # Inicializador do WebDriver
-        driver = webdriver.Firefox(
-            service=Service(self.path), options=self.options)
         
-        # Maximiza a window para evitar erros de interação com elementos
+        driver = self.initdriver()
         driver.maximize_window()
 
         wait = WebDriverWait(driver, 10)
@@ -186,11 +175,7 @@ class ExtractPauta:
                 subprocess.run([python_path, "makexlsx.py"] + argumentos)
                 return
         
-        # Inicializador do WebDriver
-        driver = webdriver.Firefox(
-            service=Service(self.path), options=self.options)
-        
-        # Maximiza a window para evitar erros de interação com elementos
+        driver = self.initdriver()
         driver.maximize_window()
 
         wait = WebDriverWait(driver, 10)
@@ -203,7 +188,7 @@ class ExtractPauta:
         self.execution()
 
     def queue(self, vara: str, driver: Type[WebDriver], wait: Type[WebDriverWait]):
-
+        
         if not self.appends.get(vara, None):
             self.appends[vara] = {}
 
@@ -309,3 +294,57 @@ class ExtractPauta:
 
         except Exception as e:
             tqdm.write(f"{e}")
+
+    def initdriver(self) -> WebDriver:
+        
+        temp_folder = os.path.join(os.getcwd(), "Temp")
+        os.makedirs(temp_folder, exist_ok=True)
+        thisthreadpath = os.path.join(os.getcwd(), "Temp", str(random.randint(11111, 55555)))
+        os.makedirs(thisthreadpath, exist_ok=True)
+        shutil.copy(self.path, thisthreadpath)
+        tempchromepath = os.path.join(thisthreadpath, "chrome_bot")
+        
+        sleep(3)
+        path_driver = os.path.join(thisthreadpath, "chromedriver.exe")
+        if platform.system() == "Linux":
+            path_driver = path_driver.replace(".exe", "")
+        # Inicializador do WebDriver
+        
+        devtools_port_file = os.path.join(thisthreadpath, "devtools_port.txt")
+        with open(devtools_port_file, 'w') as file:
+            file.write(str(random.randint(1111, 9999)))  # Especifica a porta desejada
+        
+        opt = self.options
+        opt.add_argument(f"--devtools-active-port={devtools_port_file}")
+        opt.add_argument(f"user-data-dir={tempchromepath}")
+        
+        driver = webdriver.Chrome(service=Service(path_driver, port=random.randint(1111, 9999)), options=opt)
+        # Maximiza a window para evitar erros de interação com elementos
+        
+        if self.usuario and self.senha:
+            self.auth(self.usuario, self.senha, driver)
+        
+        return driver
+                
+    def auth(self, usuario: str, senha: str, driver: WebDriver):
+        
+        wait = WebDriverWait(driver, 20)
+        driver.get("https://pje.trt11.jus.br/primeirograu/login.seam")
+        
+        login = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="username"]')))
+        password = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="password"]')))
+        entrar = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[id="btnEntrar"]')))
+        
+        login.send_keys(usuario)
+        sleep(0.5)
+        password.send_keys(senha)
+        sleep(0.5)
+        entrar.click()
+        
+        logado = None
+        with suppress(TimeoutException):
+            logado = wait.until(EC.url_to_be("https://pje.trt11.jus.br/pjekz/painel/usuario-externo"))
+            
+        if not logado:
+            raise
+    
