@@ -26,6 +26,7 @@ from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
 from termcolor import colored
 from bot.varas_dict import varas
@@ -34,11 +35,12 @@ from bot.misc.hex_color import gerar_cor_hex
 
 class ExtractPauta:
 
-    def __init__(self, vara: str, date_inicio: Type[datetime], date_fim: Type[datetime]) -> None:
+    def __init__(self, vara: str, date_inicio: Type[datetime], date_fim: Type[datetime],
+                 usuario:str, senha: str) -> None:
         
         clear()
         os.makedirs("json", exist_ok=True)
-        
+        os.makedirs("firefox", exist_ok=True)
         self.vara = vara
         
         self.date_inicio = date_inicio
@@ -51,14 +53,44 @@ class ExtractPauta:
         self.firefox_bin = r"C:\Program Files\Mozilla Firefox\firefox.exe"
         self.options = Options()
         self.options.binary_location = self.firefox_bin
+        self.options.profile = FirefoxProfile(os.path.join(os.getcwd(), "firefox"))
         self.path = os.path.join(os.getcwd(), "geckodriver.exe")
         self.pos = 0
         self.sys = {"Linux": "bin",
                     "Windows": "Scripts"}
         
+        
         self.varas = varas()
         self.lista_varas = list(varas())
         
+        self.auth(usuario, senha)
+        
+    def auth(self, usuario: str, senha: str):
+        
+        
+        driver = webdriver.Firefox(
+            service=Service(self.path), options=self.options)
+        
+        wait = WebDriverWait(driver, 20)
+        driver.get("https://pje.trt11.jus.br/primeirograu/login.seam")
+        
+        login = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="username"]')))
+        password = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="password"]')))
+        entrar = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[id="btnEntrar"]')))
+        
+        login.send_keys(usuario)
+        sleep(0.5)
+        password.send_keys(senha)
+        sleep(0.5)
+        entrar.click()
+        
+        logado = None
+        with suppress(TimeoutException):
+            logado = wait.until(EC.url_to_be("https://pje.trt11.jus.br/pjekz/painel/usuario-externo"))
+            
+        if not logado:
+            raise
+    
     def execution2(self):
 
         ## Intera sobre as varas do dicionario, assim permite buscar por data
@@ -219,7 +251,7 @@ class ExtractPauta:
             
             clear()
             
-            tqdm.write(colored(f"Buscando pautas na data {current_date.strftime("%d/%m/%Y")}", "yellow", attrs=["bold"]))
+            tqdm.write(colored(f"Buscando pautas na data {current_date.strftime('%d/%m/%Y')}", "yellow", attrs=["bold"]))
             ## Interage com a tabela de pautas
             driver.implicitly_wait(2)
             times = 4
