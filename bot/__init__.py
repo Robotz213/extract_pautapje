@@ -58,7 +58,7 @@ class ExtractPauta:
         self.sys = {"Linux": "bin",
                     "Windows": "Scripts"}
         
-        list_args = ['--ignore-ssl-errors=yes', '--ignore-certificate-errors', 
+        list_args = ['--ignore-ssl-errors=yes', '--ignore-certificate-errors', "--headless",
                          "--display=:10", "--window-size=1600,900", "--no-sandbox", "--disable-blink-features=AutomationControlled", 
                          '--kiosk-printing']
         
@@ -130,7 +130,7 @@ class ExtractPauta:
         # Inicializador do WebDriver
         
         driver = self.initdriver()
-        driver.maximize_window()
+        
 
         wait = WebDriverWait(driver, 10)
         
@@ -176,7 +176,7 @@ class ExtractPauta:
                 return
         
         driver = self.initdriver()
-        driver.maximize_window()
+        
 
         wait = WebDriverWait(driver, 10)
         
