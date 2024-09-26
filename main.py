@@ -23,8 +23,6 @@ def set_prompt():
     ]
     answer_vara = inquirer.prompt(question_juiz)
 
-    clear()
-
     credential = None
     questions_loadpw = None
 
@@ -47,7 +45,6 @@ def set_prompt():
 
     dates = inquirer.prompt(questions_date)
 
-    clear()
     questions_pw = [
         inquirer.Text(
             "usuario", message="Usuário"),
@@ -62,6 +59,8 @@ def set_prompt():
     if not questions_loadpw:
 
         creds = inquirer.prompt(questions_pw)
+        usuario = creds.get("usuario")
+        senha = creds.get("senha")
         savecreds = inquirer.prompt(questions_savepw)
         if savecreds.get("savecred") is True:
             with open(credentials, 'w', encoding='utf-8') as file:
